@@ -10,6 +10,8 @@ def menu_input (**config):
   initial_response = config["initial_response"] if "initial_response" in config else None;
   
   if (prompt == ""):
+    prompt += "\n";
+
     for opt in options:
       prompt += f'{opt["in"]}) {opt["out"]}\n';
     
@@ -31,7 +33,8 @@ def menu_input (**config):
         break;
 
   return response;
-  
+
+
 
 class TransactionTracker () :
   def __init__(self, **config):
@@ -80,9 +83,17 @@ class TransactionTracker () :
 
     return self.get_transactions();
 
-  def get_transaction_by_index (self, index):
+  def get_transaction_by_id (self, id):
     trx_list = self.get_transactions();
-    return trx_list[index];
+    
+    trx_to_use = None;
+
+    for trx in trx_list:
+      if(trx["id"] == id):
+        trx_to_use = trx;
+        break;
+    
+    return trx_to_use;
 
   def create_deposit (self):
     print("Creating deposit...");
@@ -159,16 +170,25 @@ class TransactionTracker () :
     elif(trx_type == "withdrawal"):
       self.create_withdrawal();
   
-  def view_all (self):
+  def filter_by_type (self, type):
     trx_list = self.get_transactions();
+    
+    filtered_by_type = [];
 
+    for trx in trx_list:
+      if(trx["type"] == type):
+        filtered_by_type.append(trx);
+
+    return filtered_by_type;
+
+  def print_transactions(self, transaction_list):
     print('id | timestamp | type | amount | name | description');
 
     balance = 0;
     deposit_count = 0;
     withdrawal_count = 0;
 
-    for trx in trx_list:
+    for trx in transaction_list:
       s = f'{trx["id"]} | {trx["timestamp"]} | {trx["type"]} | {trx["amount"]} | {trx["name"]} | {trx["description"]}';
       print(s);
 
@@ -179,8 +199,28 @@ class TransactionTracker () :
         balance += (trx["amount"] * -1);
         withdrawal_count += 1;
     
-    print('balance | deposit count | withdrawal count');
-    print(f'{balance} | {deposit_count} | {withdrawal_count}');
+    print(f'balance: {balance} | deposits: {deposit_count} | withdrawals: {withdrawal_count} | total: {deposit_count + withdrawal_count}');
+
+  def view_by_type (self):
+    type_to_use = menu_input(
+      options = [
+        {
+          "in": "1",
+          "out": "deposit"
+        },
+        {
+          "in": "2",
+          "out": "withdrawal"
+        }
+      ]
+    );
+
+    self.print_transactions(self.filter_by_type(type_to_use));
+    
+  def view_all (self):
+    trx_list = self.get_transactions();
+    self.print_transactions(trx_list);
+    
 
   def view (self):
     print('Select view option: ');
@@ -189,21 +229,37 @@ class TransactionTracker () :
         {
           "in": "1",
           "out": "all"
+        },
+        {
+          "in": "2",
+          "out": "filter by transaction type"
         }
       ]
     )
 
     if(menu_option == "all"):
       self.view_all();
+    elif(menu_option == "filter by transaction type"):
+      self.view_by_type();
     
 
+  def delete_transaction_by_id (self, id):
+    trx = self.get_transaction_by_id(id);
+    if(trx == None): 
+      print(f'transaction of id: {id} does not exist')
+      return;
 
-  def run (self):
+    trx_list = self.get_transactions();
     
-    self.setup();
+    new_trx_list = [];
 
-    print('Transaction Tracker CLI');
+    for trx_item in trx_list:
+      if(trx_item["id"] != trx["id"]):
+        new_trx_list.append(trx_item);
+    
+    self.set_transactions(new_trx_list);
 
+  def main_menu(self):
     menu_option = menu_input(
       options = [
         {
@@ -229,4 +285,14 @@ class TransactionTracker () :
       self.create();
     elif(menu_option == "view"):
       self.view();
+    elif(menu_option == "delete"):
+      id = input('Enter id: ');
+      self.delete_transaction_by_id(int(id));
+  def run (self):
+    
+    self.setup();
+
+    print('Transaction Tracker CLI');
+
+    self.main_menu();
 
